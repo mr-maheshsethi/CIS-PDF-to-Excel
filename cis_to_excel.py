@@ -55,26 +55,28 @@ with open(cistext, 'r', encoding='utf-8') as filer:
 #-------------------------------------------------------
 				
 
-flagStart, flagDesc, flagAudit, flagRecom, flagComplete = False, False, False, False, False
-cis_title, cis_desc, cis_audit, cis_recom = "","","",""
+flagStart, flagDesc, flagRationale, flagAudit, flagRecom, flagComplete = False, False, False, False, False, False
+cis_title, cis_desc, cis_rationale, cis_audit, cis_recom = "","","","",""
 listObj = []
 
 
 print("[+] Converting to Json...")
 with open("temp.txt", 'r', encoding='utf-8') as filer:
 	for line in filer:
+		
 		if not line.strip():
 			continue
-		if line.strip():
 
+		if line.strip():
 			x = {} #json object
 			if re.match(r"^[0-9]\.[0-9]", line):
 				# flagStart = True		# identified CIS title			
-				cis_title, cis_desc, cis_audit, cis_recom = line,"","",""
-				flagStart, flagDesc, flagAudit, flagRecom, flagComplete = True, False, False, False, False
+				cis_title, cis_desc, cis_rationale, cis_audit, cis_recom = line,"","","",""
+				flagStart, flagDesc, flagRationale, flagAudit, flagRecom, flagComplete = True, False, False, False, False, False
 				# cis_title, cis_desc, cis_audit, cis_recom = "","","",""
 
 			if flagStart:
+				
 				# Get description - capture everything between 'Description:' and 'Rationale:'
 				if "Description:" in line:	
 					flagDesc = True
@@ -84,8 +86,15 @@ with open("temp.txt", 'r', encoding='utf-8') as filer:
 						continue
 					cis_desc = cis_desc + line
 
+				# Get rationale - capture everything between 'Rationale:' and 'Audit:'
 				if "Rationale:" in line:
-					flagDesc = False
+					flagRationale = True
+
+				if flagRationale:
+					if "Rationale" in line:
+						continue
+					cis_rationale = cis_rationale + line
+					
 
 																
 				# # Get Audit - capture everything between 'Audit:' and 'Remediation:'
@@ -119,24 +128,43 @@ with open("temp.txt", 'r', encoding='utf-8') as filer:
 
 				if flagComplete:
 					cis_title = cis_title.replace('\n','')
+
+					pg_fact = 'Page '+r'\d{1,3}'
+
 					cis_desc = cis_desc.replace('\n','')
-					cis_desc = cis_desc.replace('Rationale:','')
-					cis_desc = cis_desc.replace('| P a g e','')
+					# cis_desc_str = ''.join(re.findall(pg_fact))
+					cis_desc = re.sub(pg_fact,'',cis_desc)
+					# cis_desc = cis_desc.replace('| P a g e','')
+					cis_desc = cis_desc[:cis_desc.find('Rationale:')]
+
+					cis_rationale = cis_rationale.replace('\n','')
+					cis_rationale = re.sub(pg_fact, '', cis_rationale)
+					# cis_rationale = cis_rationale.replace(''.join((re.findall(pg_fact,cis_rationale))),'')
+					cis_rationale = cis_rationale[:cis_rationale.find('Audit:')]
+
 					cis_audit = cis_audit.replace('\n','')
+					cis_audit = re.sub(pg_fact,'',cis_audit)
+					# cis_audit = cis_audit.replace(''.join((re.findall(pg_fact,cis_audit))),'')
+					# cis_audit = cis_audit.replace('| P a g e','')
 					cis_audit = cis_audit.replace('Remediation:','')
-					cis_audit = cis_audit.replace('| P a g e','')
+					cis_audit = cis_audit[:cis_audit.find('Recommendations:')]
+					
 					cis_recom = cis_recom.replace('\n','')
+					cis_recom = re.sub(pg_fact,'',cis_recom)
+					# cis_recom = cis_recom.replace(''.join((re.findall(pg_fact,cis_recom))),'')
 					cis_recom = cis_recom.replace('CIS Controls:','')
 					cis_recom = cis_recom.replace('Additional Information:','')
 					cis_recom = cis_recom.replace('References:','')
-					cis_recom = cis_recom.replace('| P a g e','')
+					# cis_recom = cis_recom.replace('| P a g e','')
 
-					x['title'] = cis_title
-					x['description'] = cis_desc
-					x['audit'] = cis_audit
-					x['recommendations'] = cis_recom
+
+					x['Title'] = cis_title
+					x['Desciption'] = cis_desc
+					x['Impact'] = cis_rationale
+					x['Audit'] = cis_audit
+					x['Recommendations'] = cis_recom
 					# print(x)
-					cis_title, cis_desc, cis_audit, cis_recom = "","","",""
+					cis_title, cis_desc, cis_rationale, cis_audit, cis_recom = "","","","",""
 					flagStart = False
 					# parsed = json.loads(x)
 					# print(json.dumps(x, indent=4))
